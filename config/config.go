@@ -24,6 +24,7 @@ type Config struct {
 	SessionTimeoutSeconds int    `default:"0" split_words:"true"`
 
 	TurnAddress string `default:":3478" required:"true" split_words:"true"`
+	TurnRealm   string `default:"ezshare" split_words:"true"`
 
 	CorsAllowedOrigins       []string          `split_words:"true"`
 	CheckOrigin              func(string) bool `ignored:"true" json:"-"`

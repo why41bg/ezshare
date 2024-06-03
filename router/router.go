@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"github.com/ezshare/server/auth"
 	"github.com/ezshare/server/config"
-	"github.com/ezshare/server/ui"
 	"github.com/gorilla/handlers"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
@@ -47,6 +46,6 @@ func Router(config config.Config, users *auth.Users) *mux.Router {
 	})
 	router.Methods("POST").Path("/login").HandlerFunc(users.Authenticate)
 	router.Methods("POST").Path("/logout").HandlerFunc(users.Logout)
-	ui.Register(router)
+	//ui.Register(router)
 	return router
 }

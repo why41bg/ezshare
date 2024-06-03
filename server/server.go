@@ -57,9 +57,11 @@ func listenAndServe(srv *http.Server, cert, key string) error {
 	log.Debug().Str("address", srv.Addr).Msg("listening")
 	if cert != "" && key != "" {
 		log.Debug().Msg("using TLS")
+		log.Info().Msg("Started HTTP server")
 		return srv.ServeTLS(listener, cert, key)
 	} else {
 		log.Debug().Msg("no TLS certificate provided, using plain HTTP")
+		log.Info().Msg("Started HTTP server")
 		return srv.Serve(listener)
 	}
 }

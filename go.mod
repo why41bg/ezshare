@@ -8,6 +8,7 @@ require (
 	github.com/gorilla/sessions v1.2.2
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/pion/turn/v2 v2.1.6
 	github.com/rs/zerolog v1.33.0
 	github.com/urfave/cli v1.22.15
 )
@@ -18,7 +19,13 @@ require (
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/pion/dtls/v2 v2.2.7 // indirect
+	github.com/pion/logging v0.2.2 // indirect
+	github.com/pion/randutil v0.1.0 // indirect
+	github.com/pion/stun v0.6.1 // indirect
+	github.com/pion/transport/v2 v2.2.1 // indirect
 	github.com/rs/xid v1.5.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	golang.org/x/crypto v0.8.0 // indirect
 	golang.org/x/sys v0.12.0 // indirect
 )
