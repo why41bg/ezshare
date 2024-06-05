@@ -55,6 +55,7 @@ func NewRooms(turnServer turn.Server, users *auth.Users, conf config.Config) *Ro
 func (r *Rooms) Upgrade(w http.ResponseWriter, req *http.Request) {
 	// Upgrade the HTTP request to a WebSocket
 	ws, err := r.upgrader.Upgrade(w, req, nil)
+	log.Debug().Str("remoteAddr", req.RemoteAddr).Msg("Upgrade to websocket")
 	if err != nil {
 		log.Error().Err(err).Msg("Upgrade failed")
 		w.WriteHeader(400)
@@ -76,7 +77,7 @@ func (r *Rooms) Upgrade(w http.ResponseWriter, req *http.Request) {
 func (r *Rooms) Start() {
 	for {
 		msg := <-r.Incoming
-		log.Debug().Str("clientId", msg.Info.ID.String()).Str("user", msg.Info.AuthenticatedUser).Msg("Received message")
+		log.Debug().Str("clientId", msg.Info.ID.String()).Str("user", msg.Info.AuthenticatedUser).Msg("Rooms received message")
 		if err := msg.Incoming.Execute(r, msg.Info); err != nil {
 			log.Error().Err(err).Msg("Incoming message execute failed")
 			msg.Info.Close <- err.Error()

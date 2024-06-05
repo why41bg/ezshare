@@ -45,7 +45,7 @@ func Router(config config.Config, rooms *ws.Rooms, users *auth.Users) *mux.Route
 		_ = json.NewEncoder(w).Encode(&UIConfig{
 			User:                     user,
 			LoggedIn:                 loggedIn,
-			RoomName:                 "default", // TODO: 随机生成一个房间名
+			RoomName:                 rooms.RandRoomName(),
 			CloseRoomWhenOwnerLeaves: config.CloseRoomWhenOwnerLeaves,
 		})
 	})

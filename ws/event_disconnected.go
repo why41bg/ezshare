@@ -26,7 +26,7 @@ func (e *Disconnected) Execute(rooms *Rooms, current ClientInfo) error {
 		return nil
 	}
 
-	current.Close <- "Read End"
+	current.Close <- CloseDone
 	delete(room.Users, current.ID)
 
 	for id, session := range room.Sessions {
