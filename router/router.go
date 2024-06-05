@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"github.com/ezshare/server/auth"
 	"github.com/ezshare/server/config"
+	"github.com/ezshare/server/ui"
+	"github.com/ezshare/server/ws"
 	"github.com/gorilla/handlers"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
@@ -23,18 +25,21 @@ func responseLogger(r *http.Request, status, size int, duration time.Duration) {
 	log.Info().Str("host", r.Host).Str("method", r.Method).Str("path", r.URL.Path).Str("ip", r.RemoteAddr).Int("status", status).Int("size", size).Dur("duration", duration).Msg("response")
 }
 
-func Router(config config.Config, users *auth.Users) *mux.Router {
+func Router(config config.Config, rooms *ws.Rooms, users *auth.Users) *mux.Router {
+	// 1. 创建一个新的路由对象
 	router := mux.NewRouter()
 	router.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		responseLogger(r, http.StatusNotFound, 0, 0)
 	})
 
-	// 对于每个到来的请求，先执行 CORS 策略，然后再交给具体的处理函数，最后还需要进行日志记录
+	// 2. 配置路由中间件
 	router.Use(handlers.CORS(handlers.AllowedMethods([]string{"GET", "POST"}), handlers.AllowedOriginValidator(config.CheckOrigin)))
 	router.Use(hlog.AccessHandler(responseLogger))
 
-	// 具体的路由规则
-	router.HandleFunc("/stream", func(w http.ResponseWriter, r *http.Request) {}) // TODO: 实现 stream
+	// 3. 配置路由
+	router.HandleFunc("/stream", rooms.Upgrade)
+	router.Methods("POST").Path("/login").HandlerFunc(users.Authenticate)
+	router.Methods("POST").Path("/logout").HandlerFunc(users.Logout)
 	router.Methods("GET").Path("/config").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, loggedIn := users.CurrentUser(r)
 		_ = json.NewEncoder(w).Encode(&UIConfig{
@@ -46,6 +51,6 @@ func Router(config config.Config, users *auth.Users) *mux.Router {
 	})
 	router.Methods("POST").Path("/login").HandlerFunc(users.Authenticate)
 	router.Methods("POST").Path("/logout").HandlerFunc(users.Logout)
-	//ui.Register(router)
+	ui.Register(router)
 	return router
 }

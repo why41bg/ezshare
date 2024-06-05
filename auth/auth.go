@@ -51,16 +51,16 @@ func read(r io.Reader) ([]UserInfo, error) {
 	return ret, nil
 }
 
-// LoadUsersFile 从指定的文件中读取用户信息，存储到 Users 结构体中
+// LoadUsersFile 从指定的文件中读取用户信息
 func LoadUsersFile(path string, secret []byte, sessionTimeout int) (*Users, error) {
-	// 初始化一个存储用户信息的结构体
+	// 1. 初始化一个存储用户信息的结构体
 	users := &Users{
 		Lookup:      map[string]string{},
 		store:       sessions.NewCookieStore(secret),
 		sessionTime: sessionTimeout,
 	}
 
-	// 读取存储用户信息的文件
+	// 2. 读取用户信息，保存到Users结构体中
 	fd, err := os.Open(path)
 	defer func(fd *os.File) {
 		err := fd.Close()
@@ -73,17 +73,16 @@ func LoadUsersFile(path string, secret []byte, sessionTimeout int) (*Users, erro
 		log.Error().Err(err).Msg("Failed to read users file")
 		return nil, err
 	}
-
-	// 将用户信息保存到 Users 结构体中
 	for _, userInfo := range userInfos {
 		users.Lookup[userInfo.name] = userInfo.passwd
 	}
-
-	log.Info().Msg(fmt.Sprintf("Loaded %d users", len(users.Lookup)))
+	log.Debug().Msg(fmt.Sprintf("Loaded %d users", len(users.Lookup)))
 	return users, nil
 }
 
-// CurrentUser 获取当前请求 session 中包含的用户信息，如果没有则返回 guest
+// CurrentUser will try to get the user info from the session of
+// the current request. If the session does not exist, it will
+// create a new session and return "guest" as the user info.
 func (u *Users) CurrentUser(r *http.Request) (string, bool) {
 	session, err := u.store.Get(r, "user")
 	if err != nil {
@@ -91,13 +90,15 @@ func (u *Users) CurrentUser(r *http.Request) (string, bool) {
 		return "guest", false
 	}
 	if username, ok := session.Values["user"].(string); ok {
+		log.Debug().Str("user", username).Msg("Got username from session")
 		return username, ok
 	}
-	log.Info().Msg("Failed to get username from session")
+	log.Debug().Str("user", "guest").Msg("Failed to get username from session")
 	return "guest", false
 }
 
-// Logout 注销用户，通过创建一个新的 session，覆盖原有的 session，达到注销的目的
+// Logout log out the user included in the request by creating a new session
+// and overwriting the old session.
 func (u *Users) Logout(w http.ResponseWriter, r *http.Request) {
 	session := sessions.NewSession(u.store, "user")
 	session.IsNew = true
@@ -111,7 +112,7 @@ func (u *Users) Logout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 }
 
-// validateUser 验证用户信息是否正确，即是否存在于 Users 结构体中
+// validateUser check if the user and password are correct.
 func (u *Users) validateUser(user, passwd string) bool {
 	pwd, ok := u.Lookup[user]
 	if !ok {
@@ -125,13 +126,14 @@ func (u *Users) validateUser(user, passwd string) bool {
 	return true
 }
 
-// Authenticate 验证用户信息是否正确，如果正确则创建一个新的 session
-// 并将这个新的 session 与用户请求关联起来，存储在 Users 结构体中
-// 后续来自这个用户的请求都会携带这个 session，从而实现会话管理
+// Authenticate will check if the user and password are correct. If they are,
+// it will create a new session and store the user info in the session. And
+// then save the session to the store with response 200. If the password is
+// not correct, it will return 401.
 func (u *Users) Authenticate(w http.ResponseWriter, r *http.Request) {
+	// 1. Get username and password from the request.
 	user := r.FormValue("user")
 	pass := r.FormValue("pass")
-
 	if !u.validateUser(user, pass) {
 		w.WriteHeader(401)
 		_ = json.NewEncoder(w).Encode(&Response{
@@ -140,7 +142,7 @@ func (u *Users) Authenticate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 用户信息验证通过，创建一个新的 session，用于保存会话信息
+	// 2. Create a new session and store the user info in the session.
 	session := sessions.NewSession(u.store, "user")
 	session.IsNew = true
 	session.Options.MaxAge = u.sessionTime

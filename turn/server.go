@@ -9,17 +9,20 @@ import (
 	"sync"
 )
 
+// Server 定义了TURN服务器的接口
 type Server interface {
 	Credentials(id string, addr net.IP) (string, string)
 	Ban(username string)
 }
 
-// InternalServer 用于管理内部的TURN服务器
+// InternalServer 实现了 Server 接口，用于管理内部的TURN服务器，
+// 主要是对接入TURN服务器的用户的权限管理
 type InternalServer struct {
 	lock   sync.RWMutex
 	Lookup map[string]User
 }
 
+// User 定义了接入TURN服务器的用户信息
 type User struct {
 	Addr     net.IP
 	Password []byte
@@ -27,17 +30,23 @@ type User struct {
 
 // Start 根据配置文件启动一个TURN服务器
 func Start(config *config.Config) (Server, error) {
-	// 根据配置文件生成一个TURN服务器实例
+	// 1. 根据配置文件创建一个UDP和一个TCP监听器，在TURN服务器上监听UDP和TCP连接
 	udpl, err := net.ListenPacket("udp", config.TurnAddress)
+	log.Debug().Str("address", config.TurnAddress).Msg("UDP is listening on TURN")
 	if err != nil {
 		return nil, err
 	}
 	tcpl, err := net.Listen("tcp", config.TurnAddress)
+	log.Debug().Str("address", config.TurnAddress).Msg("TCP is listening on TURN")
 	if err != nil {
 		return nil, err
 	}
 
+	// 2. 创建一个Server对象，对TURN接入权限进行管理
 	srv := &InternalServer{Lookup: map[string]User{}}
+	log.Debug().Msg("Created internal server")
+
+	// 3. 创建RelayAddressGenerator对象用于生成中继地址
 	nt, err := stdnet.NewNet()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create network")
@@ -48,7 +57,9 @@ func Start(config *config.Config) (Server, error) {
 		Address:      config.TurnAddress,
 		Net:          nt,
 	}
-	// NewServer在内部运行一个goroutine来启动TURN服务，无需返回
+	log.Debug().Msg("Created relay address generator")
+
+	// 4. 启动TURN服务，内部自动开启一个goroutine监听UDP和TCP连接
 	_, err = turn.NewServer(turn.ServerConfig{
 		Realm:       config.TurnRealm,
 		AuthHandler: srv.authenticate,
@@ -63,32 +74,27 @@ func Start(config *config.Config) (Server, error) {
 		log.Error().Err(err).Msg("Failed to start TURN server")
 		return nil, err
 	}
-
 	log.Info().Str("address", config.TurnAddress).Msg("Started TURN server")
 	return srv, nil
 }
 
-// Credentials 为 id 和 addr 唯一标识的用户生成随机密码，并注册到 s.Lookup 中
+// Credentials 为id和addr唯一标识的用户生成随机密码，并注册到s.Lookup中
 func (s *InternalServer) Credentials(id string, addr net.IP) (string, string) {
-	// TODO 为 id 和 addr 唯一标识的用户生成随机密码，这里临时先返回固定值
+	// 1. TODO 为 id 和 addr 唯一标识的用户生成随机密码，这里临时先返回固定值，并注册到 s.Lookup 中
 	pass := "password"
-
-	// 将用户信息注册到 s.Lookup 中
 	s.lock.Lock()
 	defer s.lock.Lock()
 	s.Lookup[id] = User{Addr: addr, Password: []byte(pass)}
-	log.Info().Str("id", id).IPAddr("addr", addr).Msg("Registered")
 
-	// 注册成功后返回用户名和密码
+	// 2. 注册成功后返回用户名和密码
 	return id, pass
 }
 
-// Ban 从 s.Lookup 中删除指定用户名的用户信息，即禁止该用户使用TURN服务
+// Ban 从s.Lookup中删除指定用户名的用户信息，即禁止该用户使用TURN服务
 func (s *InternalServer) Ban(username string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	delete(s.Lookup, username)
-	log.Info().Str("username", username).Msg("Banned")
 }
 
 // authenticate 查询 s.Lookup 中是否存在指定用户名的用户信息，如果存在则返回密码，否则返回 false
@@ -101,7 +107,5 @@ func (s *InternalServer) authenticate(username, realm string, addr net.Addr) ([]
 		log.Info().Str("username", username).Str("realm", realm).Str("address", addr.String()).Msg("Unauthorized")
 		return nil, false
 	}
-
-	log.Info().Str("username", username).Str("realm", realm).Str("address", addr.String()).Msg("Authorized")
 	return entry.Password, true
 }

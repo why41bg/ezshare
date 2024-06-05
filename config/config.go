@@ -2,9 +2,11 @@ package config
 
 import (
 	"crypto/rand"
+	"github.com/ezshare/server/config/ip"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/rs/zerolog/log"
+	"net"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -23,8 +25,10 @@ type Config struct {
 	Secret                []byte `split_words:"true"`
 	SessionTimeoutSeconds int    `default:"0" split_words:"true"`
 
-	TurnAddress string `default:":3478" required:"true" split_words:"true"`
-	TurnRealm   string `default:"ezshare" split_words:"true"`
+	TurnAddress    string      `default:":3478" required:"true" split_words:"true"`
+	TurnPort       string      `ignored:"true"`
+	TurnRealm      string      `default:"ezshare" split_words:"true"`
+	TurnIPProvider ip.Provider `ignored:"true"`
 
 	CorsAllowedOrigins       []string          `split_words:"true"`
 	CheckOrigin              func(string) bool `ignored:"true" json:"-"`
@@ -32,10 +36,10 @@ type Config struct {
 	CloseRoomWhenOwnerLeaves bool              `default:"true" split_words:"true"`
 }
 
-// LoadConfig 加载配置文件，解析环境变量，生成 Config 配置
+// LoadConfig 加载配置文件到环境变量，并解析环境变量，生成 Config
 func LoadConfig() *Config {
-	// 加载配置文件到环境变量
-	log.Info().Msg("Begin to load config")
+	// 1. 读取配置文件
+	log.Debug().Msg("Begin to load config")
 	dir, err := workOrExecAbsDir()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get work or exec dir")
@@ -44,39 +48,36 @@ func LoadConfig() *Config {
 	for _, file := range configFilePath(dir) {
 		_, existErr := os.Stat(file)
 		if existErr == nil {
-			// If file exist, try to load it
 			if err := godotenv.Load(file); err != nil {
 				log.Error().Err(err).Str("file", file).Msg("Failed to load config file")
 			}
-			log.Info().Str("file", file).Msg("Config file loaded")
+			log.Debug().Str("file", file).Msg("Config file loaded")
+			break
 		} else {
-			// If file not exist, continue to check next file
-			log.Info().Str("file", file).Msg("Config file not exist")
+			log.Debug().Str("file", file).Msg("Config file not exist")
 			continue
 		}
 	}
-	log.Info().Msg("All config files loaded")
 
-	// 解析环境变量，生成 Config 配置
+	// 2. 解析环境变量，生成Config
 	config := &Config{}
 	if err := envconfig.Process(prefix, config); err != nil {
 		log.Error().Err(err).Msg("Failed to process env config")
 		return config
 	}
-	log.Info().Msg("Env config processed")
+	log.Debug().Msg("Env config processed")
 
-	// 如果 Secret 未配置，随机生成一个临时的 Secret，但是只能用于当前进程
-	// 如果进程重启，Secret 会变化
+	// 3. 对Config进行补充处理
+	// 3.1 密码为空，生成临时随机密码，服务重启则密码失效
 	if len(config.Secret) == 0 {
 		config.Secret = make([]byte, 32)
 		if _, err := rand.Read(config.Secret); err != nil {
 			log.Error().Err(err).Msg("Failed to generate random secret")
-		} else {
-			log.Info().Msg("Random secret generated")
 		}
+		log.Debug().Msg("Random secret generated")
 	}
 
-	// 配置 CORS 允许的 Origin 和检查 Origin 的函数
+	// 3.2 配置CORS允许的Origin和检查Origin的函数
 	var compiledAllowedOrigins []*regexp.Regexp
 	for _, origin := range config.CorsAllowedOrigins {
 		compiled, err := regexp.Compile(origin)
@@ -85,14 +86,10 @@ func LoadConfig() *Config {
 		}
 		compiledAllowedOrigins = append(compiledAllowedOrigins, compiled)
 	}
-
 	config.CheckOrigin = func(origin string) bool {
-		// 非浏览器请求，直接通过
 		if origin == "" {
 			return true
 		}
-
-		// 对浏览器请求的 Origin 进行检查
 		for _, compiled := range compiledAllowedOrigins {
 			if compiled.Match([]byte(strings.ToLower(origin))) {
 				return true
@@ -100,6 +97,15 @@ func LoadConfig() *Config {
 		}
 		return false
 	}
+	log.Debug().Msg("CORS check function generated")
+
+	// 3.3 TODO: IPProvider
+	config.TurnIPProvider = &ip.Static{
+		V4: net.ParseIP(config.ExternalIP[0]),
+		V6: nil,
+	}
+	log.Debug().Msg("IP provider generated")
+	log.Info().Msg("Config loaded")
 
 	return config
 }
@@ -108,10 +114,10 @@ func LoadConfig() *Config {
 // 如果当前是 Dev 模式，返回工作目录。如果是 Prod 模式，返回可执行文件的目录
 func workOrExecAbsDir() (string, error) {
 	if CurrentMode() == Dev {
-		log.Info().Msg("Use work dir")
+		log.Debug().Msg("Use work dir")
 		return filepath.Abs(".")
 	}
-	log.Info().Msg("Use executable dir")
+	log.Debug().Msg("Use executable dir")
 	return execDir()
 }
 

@@ -15,7 +15,7 @@ func Run() {
 			Name:    "start",
 			Usage:   "Start the ezshare server",
 			Aliases: []string{"s"},
-			Action:  start,
+			Action:  Start,
 		},
 	}
 
