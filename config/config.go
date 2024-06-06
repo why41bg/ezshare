@@ -34,6 +34,7 @@ type Config struct {
 	CheckOrigin              func(string) bool `ignored:"true" json:"-"`
 	UsersFile                string            `split_words:"true"`
 	CloseRoomWhenOwnerLeaves bool              `default:"true" split_words:"true"`
+	Version                  string            `default:"1.0"`
 }
 
 // LoadConfig 加载配置文件到环境变量，并解析环境变量，生成 Config

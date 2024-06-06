@@ -25,7 +25,7 @@ type ClientInfo struct {
 	ID                xid.ID
 	RoomID            string
 	Authenticated     bool
-	AuthenticatedUser string
+	AuthenticatedUser string // If not authenticated, "guest"
 	Write             chan outgoing.Message
 	Close             chan string
 	Addr              net.IP

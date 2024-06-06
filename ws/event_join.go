@@ -12,7 +12,7 @@ func init() {
 }
 
 type Join struct {
-	ID       string `json:"id"`
+	RoomID   string `json:"id"`
 	UserName string `json:"username,omitempty"`
 }
 
@@ -20,17 +20,13 @@ func (e *Join) Execute(rooms *Rooms, current ClientInfo) error {
 	if current.RoomID != "" {
 		return fmt.Errorf("cannot join room, you are already in one")
 	}
-
-	room, ok := rooms.Rooms[e.ID]
+	room, ok := rooms.Rooms[e.RoomID]
 	if !ok {
-		return fmt.Errorf("room with id %s does not exist", e.ID)
+		return fmt.Errorf("room with id %s does not exist", e.RoomID)
 	}
-	name := e.UserName
+	name := rooms.RandUserName()
 	if current.Authenticated {
 		name = current.AuthenticatedUser
-	}
-	if name == "" {
-		name = rooms.RandUserName()
 	}
 
 	room.Users[current.ID] = &User{

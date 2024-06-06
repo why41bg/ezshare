@@ -19,6 +19,7 @@ type UIConfig struct {
 	LoggedIn                 bool   `json:"loggedIn"`
 	RoomName                 string `json:"roomName"`
 	CloseRoomWhenOwnerLeaves bool   `json:"closeRoomWhenOwnerLeaves"`
+	Version                  string `json:"version"`
 }
 
 func responseLogger(r *http.Request, status, size int, duration time.Duration) {
@@ -47,10 +48,9 @@ func Router(config config.Config, rooms *ws.Rooms, users *auth.Users) *mux.Route
 			LoggedIn:                 loggedIn,
 			RoomName:                 rooms.RandRoomName(),
 			CloseRoomWhenOwnerLeaves: config.CloseRoomWhenOwnerLeaves,
+			Version:                  config.Version,
 		})
 	})
-	router.Methods("POST").Path("/login").HandlerFunc(users.Authenticate)
-	router.Methods("POST").Path("/logout").HandlerFunc(users.Logout)
 	ui.Register(router)
 	return router
 }

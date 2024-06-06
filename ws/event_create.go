@@ -28,13 +28,15 @@ func (e *Create) Execute(rooms *Rooms, current ClientInfo) error {
 	// Check if the room already exists. If it does, join the existing room if the client wants to.
 	if _, ok := rooms.Rooms[e.RoomId]; ok {
 		if e.JoinIfExist {
-			join := &Join{UserName: e.UserName, ID: e.RoomId}
+			join := &Join{UserName: e.UserName, RoomID: e.RoomId}
 			return join.Execute(rooms, current)
 		}
 		return fmt.Errorf("room with id %s does already exist", e.RoomId)
 	}
 
-	// If the room does not exist, create a new room.
+	// If the room does not exist, create a new room and set the request client
+	// as the owner of the room. If the client is authenticated, use its username
+	// as the room owner's name, otherwise generate a random name for the guest.
 	name := rooms.RandUserName()
 	if current.Authenticated {
 		name = current.AuthenticatedUser
