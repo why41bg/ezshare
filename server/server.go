@@ -51,7 +51,7 @@ func Start(mux *mux.Router, address, cert, key string) error {
 func listenAndServe(srv *http.Server, cert, key string) error {
 	listener, err := net.Listen("tcp", srv.Addr)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to create a TCP listener")
+		log.Error().Err(err).Msg("Failed to create a TCP listener")
 		return err
 	}
 	if cert != "" && key != "" {

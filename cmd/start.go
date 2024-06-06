@@ -13,7 +13,11 @@ import (
 
 func Start(ctx *cli.Context) error {
 	// 1. 读取配置文件
-	c := config.LoadConfig()
+	c, err := config.LoadConfig()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to load config")
+		return err
+	}
 
 	// 2. 加载用户信息
 	users, err := auth.LoadUsersFile(c.UsersFile, c.Secret, c.SessionTimeoutSeconds)
