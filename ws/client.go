@@ -15,41 +15,45 @@ const (
 )
 
 type Client struct {
-	conn *websocket.Conn
-	info ClientInfo
-	once once
-	read chan<- ClientMessage
+	conn    *websocket.Conn
+	info    ClientInfo
+	once    once
+	toRooms chan<- ClientMessage
 }
 
+// ClientInfo contains the information of a client.
 type ClientInfo struct {
-	ID                xid.ID
-	RoomID            string
-	Authenticated     bool
+	ID                xid.ID // A unique ID for the client
+	RoomID            string // The room which the client is in
+	Authenticated     bool   // The creator of the client is authenticated or not
 	AuthenticatedUser string // If not authenticated, "guest"
 	Write             chan outgoing.Message
 	Close             chan string
 	Addr              net.IP
 }
 
+// ClientMessage describes an event received from a client and the client's information.
 type ClientMessage struct {
 	Info     ClientInfo
 	Incoming Event
 }
 
+// newClient creates a new Client to wrap a websocket connection. And set the close handler for the connection.
+// It returns the reference of the created Client object.
 func newClient(conn *websocket.Conn, read chan ClientMessage, authenticatedUser string, authenticated bool) *Client {
 	// 创建一个新的Client对象包装WebSocket连接，并设置其关闭时的回调函数
 	c := &Client{
-		conn: conn,
+		conn: conn, // Websocket connection
 		info: ClientInfo{
-			ID:                xid.New(),
-			RoomID:            "",
-			Authenticated:     authenticated,
-			AuthenticatedUser: authenticatedUser,
-			Write:             make(chan outgoing.Message, 1),
-			Close:             make(chan string, 1),
-			Addr:              conn.RemoteAddr().(*net.TCPAddr).IP,
+			ID:                xid.New(),                           // A unique ID for the client
+			RoomID:            "",                                  // The room which the client is in
+			Authenticated:     authenticated,                       // The creator of the client is authenticated or not
+			AuthenticatedUser: authenticatedUser,                   // If authenticated is false, it is "guest"
+			Write:             make(chan outgoing.Message, 1),      // The channel to send messages to the websocket
+			Close:             make(chan string, 1),                // The channel to send a clos signal to the websocket
+			Addr:              conn.RemoteAddr().(*net.TCPAddr).IP, // The IP address of the client
 		},
-		read: read,
+		toRooms: read, // The channel to send messages which received from the websocket to the Rooms
 	}
 	log.Debug().Str("clientId", c.info.ID.String()).Str("user", c.info.AuthenticatedUser).Msg("New client created")
 	conn.SetCloseHandler(func(code int, text string) error {
@@ -60,13 +64,17 @@ func newClient(conn *websocket.Conn, read chan ClientMessage, authenticatedUser 
 	return c
 }
 
-// Close 主动关闭WebSocket连接，并且向read通道一个通知
+// Close closes the websocket connection and sends a message to Rooms.
 func (c *Client) Close() {
 	c.once.Do(func() {
 		_ = c.conn.Close()
-		log.Debug().Str("clientId", c.info.ID.String()).Str("user", c.info.AuthenticatedUser).Msg("WebSocket Close")
+		log.Debug().
+			Str("clientId", c.info.ID.String()).
+			Str("user", c.info.AuthenticatedUser).
+			IPAddr("ip", c.info.Addr).
+			Msg("WebSocket Close")
 		go func() {
-			c.read <- ClientMessage{
+			c.toRooms <- ClientMessage{
 				Info:     c.info,
 				Incoming: &Disconnected{},
 			}
@@ -74,9 +82,9 @@ func (c *Client) Close() {
 	})
 }
 
-// startReading try to get the next reader from the websocket connection.
-// If the message type is websocket.BinaryMessage, close the connection. If
-// the message is websocket.TextMessage, then parse it and send it to the Rooms.
+// startReading try to get the next reader from the websocket connection. If the message type
+// is websocket.BinaryMessage, close the connection. If the message is websocket.TextMessage,
+// then parse it and send it to the Rooms.
 func (c *Client) startReading(pongWait time.Duration) {
 	defer c.Close()
 	_ = c.conn.SetReadDeadline(time.Now().Add(pongWait))
@@ -100,13 +108,12 @@ func (c *Client) startReading(pongWait time.Duration) {
 			return
 		}
 		log.Debug().Str("clientId", c.info.ID.String()).Str("user", c.info.AuthenticatedUser).Msg("WebSocket Receive")
-		c.read <- ClientMessage{Info: c.info, Incoming: event}
+		c.toRooms <- ClientMessage{Info: c.info, Incoming: event}
 	}
 }
 
 // startWriteHandler reads messages from the write channel and sends them to the
 // websocket connection. It also sends ping to the connection at regular intervals.
-// When it occurs, it will close the connection and stop the pingTicker right now.
 func (c *Client) startWriteHandler(pingPeriod time.Duration) {
 	pingTicker := time.NewTicker(pingPeriod)
 	dead := false

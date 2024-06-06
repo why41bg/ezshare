@@ -10,9 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// 将 build 目录及其所有子目录和文件打包到二进制文件中，并将 files 作为其接口供外界访问
-//
-//go:embed build
+// //go:embed build
 var buildFiles embed.FS
 var files, _ = fs.Sub(buildFiles, "build")
 
@@ -28,15 +26,12 @@ func Register(r *mux.Router) {
 	r.Handle("/og-banner.png", serveFile("og-banner.png", "image/png"))
 }
 
-// serveFile serves a file from the embedded filesystem.
 func serveFile(name, contentType string) http.HandlerFunc {
 	file, err := files.Open(name)
 	if err != nil {
 		log.Panic().Err(err).Msgf("could not find %s", file)
 	}
-	defer func(file fs.File) {
-		_ = file.Close()
-	}(file)
+	defer file.Close()
 	content, err := io.ReadAll(file)
 	if err != nil {
 		log.Panic().Err(err).Msgf("could not read %s", file)

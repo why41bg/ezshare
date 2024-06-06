@@ -51,7 +51,7 @@ func read(r io.Reader) ([]UserInfo, error) {
 	return ret, nil
 }
 
-// LoadUsersFile 从指定的文件中读取用户信息
+// LoadUsersFile reads the user information from the file specified by the path.
 func LoadUsersFile(path string, secret []byte, sessionTimeout int) (*Users, error) {
 	// 1. 初始化一个存储用户信息的结构体
 	users := &Users{
@@ -80,11 +80,11 @@ func LoadUsersFile(path string, secret []byte, sessionTimeout int) (*Users, erro
 	return users, nil
 }
 
-// CurrentUser will try to get the user info from the session of
-// the current request. If the session does not exist, it will
-// create a new session and return "guest" as the user info.
+// CurrentUser according to the cookie in the request to get the session or create a new session.
+// Then get the username from the session and return it. If the session is new, return "guest".
 func (u *Users) CurrentUser(r *http.Request) (string, bool) {
 	session, err := u.store.Get(r, "user")
+	session.Options.MaxAge = u.sessionTime
 	if err != nil {
 		log.Error().Err(err).Any("request", r).Msg("Failed to get the session from request or create a new session")
 		return "guest", false
@@ -105,7 +105,7 @@ func (u *Users) Logout(w http.ResponseWriter, r *http.Request) {
 	if err := u.store.Save(r, w, session); err != nil {
 		w.WriteHeader(500)
 		_ = json.NewEncoder(w).Encode(&Response{
-			Message: err.Error(),
+			Message: "Login system error, please try again",
 		})
 		return
 	}
@@ -131,18 +131,16 @@ func (u *Users) validateUser(user, passwd string) bool {
 // then save the session to the store with response 200. If the password is
 // not correct, it will return 401.
 func (u *Users) Authenticate(w http.ResponseWriter, r *http.Request) {
-	// 1. Get username and password from the request.
 	user := r.FormValue("user")
 	pass := r.FormValue("pass")
 	if !u.validateUser(user, pass) {
 		w.WriteHeader(401)
 		_ = json.NewEncoder(w).Encode(&Response{
-			Message: "Could not authenticate",
+			Message: fmt.Sprintf("User %s not found or password not match", user),
 		})
 		return
 	}
 
-	// 2. Create a new session and store the user info in the session.
 	session := sessions.NewSession(u.store, "user")
 	session.IsNew = true
 	session.Options.MaxAge = u.sessionTime
@@ -150,7 +148,7 @@ func (u *Users) Authenticate(w http.ResponseWriter, r *http.Request) {
 	if err := u.store.Save(r, w, session); err != nil {
 		w.WriteHeader(500)
 		_ = json.NewEncoder(w).Encode(&Response{
-			Message: err.Error(),
+			Message: "Login system error, please try again",
 		})
 		return
 	}

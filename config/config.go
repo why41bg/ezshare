@@ -30,6 +30,7 @@ type Config struct {
 	TurnRealm      string      `default:"ezshare" split_words:"true"`
 	TurnIPProvider ip.Provider `ignored:"true"`
 
+	AuthMode                 string            `default:"turn" split_words:"true"`
 	CorsAllowedOrigins       []string          `split_words:"true"`
 	CheckOrigin              func(string) bool `ignored:"true" json:"-"`
 	UsersFile                string            `split_words:"true"`

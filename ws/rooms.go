@@ -16,14 +16,16 @@ import (
 
 type Rooms struct {
 	turnServer turn.Server
-	Rooms      map[string]*Room
-	Incoming   chan ClientMessage
-	upgrader   websocket.Upgrader
-	users      *auth.Users
+	Rooms      map[string]*Room   // RoomID -> Room
+	Incoming   chan ClientMessage // Receive messages from clients. All clients send messages to this channel.
+	upgrader   websocket.Upgrader // The function to upgrade an HTTP request to a WebSocket connection.
+	users      *auth.Users        // Loaded user information from the user file in local.
 	config     config.Config
 	r          *rand.Rand
 }
 
+// NewRooms creates a new Rooms object and define the function to upgrade an HTTP request to a WebSocket
+// connection. Return the reference of the created Rooms object.
 func NewRooms(turnServer turn.Server, users *auth.Users, conf config.Config) *Rooms {
 	log.Info().Msg("Creating rooms")
 	return &Rooms{
@@ -51,9 +53,12 @@ func NewRooms(turnServer turn.Server, users *auth.Users, conf config.Config) *Ro
 	}
 }
 
-// Upgrade upgrades an HTTP request to a websocket connection and wraps it in a Client object.
+// Upgrade upgrades an HTTP request to a websocket connection. And wrap the websocket connection
+// with a Client object.
+//
+// Lastly, start two goroutines, one to read messages from websocket and them to Rooms, the other
+// write messages which received from Rooms to websocket.
 func (r *Rooms) Upgrade(w http.ResponseWriter, req *http.Request) {
-	// Upgrade the HTTP request to a WebSocket
 	ws, err := r.upgrader.Upgrade(w, req, nil)
 	log.Debug().Str("remoteAddr", req.RemoteAddr).Msg("Upgrade to websocket")
 	if err != nil {
@@ -63,8 +68,6 @@ func (r *Rooms) Upgrade(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Get the current user information and user login status, and wrap the WebSocket
-	// connection as a client object.
 	user, loggedIn := r.users.CurrentUser(req)
 	c := newClient(ws, r.Incoming, user, loggedIn)
 	go c.startReading(time.Second * 20)
