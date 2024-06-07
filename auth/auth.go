@@ -60,8 +60,8 @@ func LoadUsersFile(path string, secret []byte, sessionTimeout int) (*Users, erro
 	return users, nil
 }
 
-// CurrentUser according to the cookie in the request to get the session or create a new session.
-// Then get the username from the session and return it. If the session is new, return "guest".
+// CurrentUser according to the cookie in the request to get the session and then
+// to get the username. If the user not authenticated, "guest" will return.
 func (u *Users) CurrentUser(r *http.Request) (string, bool) {
 	session, err := u.store.Get(r, "user")
 	session.Options.MaxAge = u.sessionTime
@@ -106,8 +106,8 @@ func (u *Users) validateUser(user, passwd string) bool {
 	return true
 }
 
-// Authenticate will check if the user and password are correct. If they are,
-// it will create a new session and store the user info in the session. And
+// Authenticate will check if the user and password are correct. If so,
+// it will create a new session which stored the user information. And
 // then save the session to the store with response 200. If the password is
 // not correct, it will return 401.
 func (u *Users) Authenticate(w http.ResponseWriter, r *http.Request) {

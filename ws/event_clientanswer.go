@@ -26,9 +26,8 @@ func (e *ClientAnswer) Execute(rooms *Rooms, current ClientInfo) error {
 	}
 
 	session, ok := room.Sessions[e.SID]
-
 	if !ok {
-		log.Debug().Str("id", e.SID.String()).Msg("unknown session")
+		log.Debug().Str("sessionId", e.SID.String()).Msg("Unknown session")
 		return nil
 	}
 

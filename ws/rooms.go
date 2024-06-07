@@ -26,6 +26,8 @@ type Rooms struct {
 
 // NewRooms creates a new Rooms object and define the function to upgrade an HTTP request to a WebSocket
 // connection. Return the reference of the created Rooms object.
+//
+// This function only runs once when the server starts.
 func NewRooms(turnServer turn.Server, users *auth.Users, conf config.Config) *Rooms {
 	log.Debug().Msg("Creating rooms")
 	return &Rooms{
@@ -80,11 +82,17 @@ func (r *Rooms) Upgrade(w http.ResponseWriter, req *http.Request) {
 func (r *Rooms) Start() {
 	for {
 		msg := <-r.Incoming
-		log.Debug().Str("clientId", msg.Info.ID.String()).Str("user", msg.Info.AuthenticatedUser).Msg("Rooms received message")
+		log.Debug().
+			Str("clientId", msg.Info.ID.String()).
+			Str("user", msg.Info.AuthenticatedUser).
+			Interface("event", msg.Incoming).
+			Msg("Server received a message from client")
+
 		if err := msg.Incoming.Execute(r, msg.Info); err != nil {
 			log.Error().Err(err).Msg("Incoming message execute failed")
 			msg.Info.Close <- err.Error()
 		}
+		log.Debug().Interface("event", msg.Incoming).Msg("Message executed successfully")
 	}
 }
 

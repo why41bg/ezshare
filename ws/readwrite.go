@@ -31,9 +31,9 @@ func ToTypedOutgoing(outgoing outgoing.Message) (Typed, error) {
 	}, nil
 }
 
-// ReadTypedIncoming reads a JSON message from the reader and parses it. It returns
+// ParseTypedIncoming reads a JSON message from the reader and parses it. It returns
 // the parsed Event and an error if any.
-func ReadTypedIncoming(r io.Reader) (Event, error) {
+func ParseTypedIncoming(r io.Reader) (Event, error) {
 	typed := Typed{}
 	if err := json.NewDecoder(r).Decode(&typed); err != nil {
 		log.Error().Err(err).Msg("Failed decode incoming")

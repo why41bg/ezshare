@@ -40,19 +40,24 @@ func (e *Create) Execute(rooms *Rooms, current ClientInfo) error {
 	// If the room does not exist, create a new room and set the request client
 	// as the owner of the room. If the client is authenticated, use its username
 	// as the room owner's username, otherwise generate a random username for the guest.
-	username := rooms.RandUserName()
+	var username string
 	if current.Authenticated {
 		username = current.AuthenticatedUser
+	} else {
+		username = rooms.RandUserName()
 	}
 
 	switch rooms.config.AuthMode {
 	case config.AuthModeNone:
+		// Do nothing
 	case config.AuthModeAll:
+		// Always require authentication
 		if !current.Authenticated {
 			return errors.New("you need to login")
 		}
 	case config.AuthModeTurn:
-		if e.ConnectionMode != ConnectionSTUN && e.ConnectionMode != ConnectionLocal && !current.Authenticated {
+		// Only require authentication for TURN connections
+		if e.ConnectionMode == ConnectionTURN && !current.Authenticated {
 			return errors.New("you need to login")
 		}
 	}

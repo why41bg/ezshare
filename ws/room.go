@@ -25,15 +25,16 @@ type Room struct {
 }
 
 type User struct {
-	ID        xid.ID
-	Addr      net.IP
-	Name      string
+	ID        xid.ID // Client ID
+	Addr      net.IP // Client IP address
+	Name      string // If the client is authenticated, it is the authenticated username, otherwise it is a random username
 	Streaming bool
 	Owner     bool
-	Write     chan<- outgoing.Message
-	Close     chan<- string
+	Write     chan<- outgoing.Message // Client write channel which to send messages to the client
+	Close     chan<- string           // Client close channel which to send a close signal to the client
 }
 
+// RoomSession here has a stream channel from the Host to the Client.
 type RoomSession struct {
 	Host   xid.ID
 	Client xid.ID
@@ -44,6 +45,8 @@ const (
 	CloseDone      = "Read End"
 )
 
+// newSession creates a new session between the host and the client. The host and client are the
+// ClientInfo.ID. The v4 and v6 are the IP addresses of the TURN server.
 func (r *Room) newSession(host, client xid.ID, rooms *Rooms, v4, v6 net.IP) {
 	id := xid.New()
 	r.Sessions[id] = &RoomSession{
@@ -76,6 +79,7 @@ func (r *Room) newSession(host, client xid.ID, rooms *Rooms, v4, v6 net.IP) {
 	r.Users[client].Write <- outgoing.ClientSession{Peer: host, ID: id, ICEServers: iceClient}
 }
 
+// addresses generates the STUN or TURN server address for the given IP.
 func (r *Rooms) addresses(prefix string, v4, v6 net.IP, tcp bool) (result []string) {
 	if v4 != nil {
 		result = append(result, fmt.Sprintf("%s:%s:%s", prefix, v4.String(), r.config.TurnPort))
@@ -102,6 +106,7 @@ func (r *Room) closeSession(rooms *Rooms, id xid.ID) {
 	delete(r.Sessions, id)
 }
 
+// notifyInfoChanged loops over all users in the room and sends them the updated room information.
 func (r *Room) notifyInfoChanged() {
 	for _, current := range r.Users {
 		var users []outgoing.User
@@ -118,15 +123,12 @@ func (r *Room) notifyInfoChanged() {
 		sort.Slice(users, func(i, j int) bool {
 			left := users[i]
 			right := users[j]
-
 			if left.Owner != right.Owner {
 				return left.Owner
 			}
-
 			if left.Streaming != right.Streaming {
 				return left.Streaming
 			}
-
 			return left.Name < right.Name
 		})
 

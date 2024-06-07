@@ -71,7 +71,6 @@ func (c *Client) Close() {
 		log.Debug().
 			Str("clientId", c.info.ID.String()).
 			Str("user", c.info.AuthenticatedUser).
-			IPAddr("ip", c.info.Addr).
 			Msg("WebSocket Close")
 		go func() {
 			c.toRooms <- ClientMessage{
@@ -93,21 +92,16 @@ func (c *Client) startReading(pongWait time.Duration) {
 		return nil
 	})
 	for {
-		t, m, err := c.conn.NextReader()
-		if err != nil {
-			log.Error().Err(err).Str("clientId", c.info.ID.String()).Msg("Failed to get next reader")
-			return
-		}
+		t, m, _ := c.conn.NextReader()
 		if t == websocket.BinaryMessage {
-			_ = c.conn.CloseHandler()(websocket.CloseUnsupportedData, fmt.Sprintf("Unsupported binary message type: %s", err))
+			_ = c.conn.CloseHandler()(websocket.CloseUnsupportedData, fmt.Sprintf("Unsupported binary message type"))
 			return
 		}
-		event, err := ReadTypedIncoming(m)
+		event, err := ParseTypedIncoming(m)
 		if err != nil {
-			_ = c.conn.CloseHandler()(websocket.CloseNormalClosure, fmt.Sprintf("Malformed message: %s", err))
+			_ = c.conn.CloseHandler()(websocket.CloseNormalClosure, fmt.Sprintf("Failed to parse message: %s", err))
 			return
 		}
-		log.Debug().Str("clientId", c.info.ID.String()).Str("user", c.info.AuthenticatedUser).Msg("WebSocket Receive")
 		c.toRooms <- ClientMessage{Info: c.info, Incoming: event}
 	}
 }
@@ -155,7 +149,7 @@ func (c *Client) startWriteHandler(pingPeriod time.Duration) {
 				conClosed()
 				log.Error().Err(err).Str("clientId", c.info.ID.String()).Str("user", c.info.AuthenticatedUser).Interface("event", typed.Type).Msg("Could not write message to conn")
 			}
-			log.Debug().Str("clientId", c.info.ID.String()).Str("user", c.info.AuthenticatedUser).Interface("event", typed.Type).Msg("WebSocket send")
+			log.Debug().Str("clientId", c.info.ID.String()).Str("user", c.info.AuthenticatedUser).Interface("event", typed.Type).Msg("Send a message to client successfully")
 		case <-pingTicker.C:
 			_ = c.conn.SetWriteDeadline(time.Now().Add(WriteTimeout))
 			err := c.conn.WriteMessage(websocket.PingMessage, nil)

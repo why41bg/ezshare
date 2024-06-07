@@ -24,9 +24,11 @@ func (e *Join) Execute(rooms *Rooms, current ClientInfo) error {
 	if !ok {
 		return fmt.Errorf("room with id %s does not exist", e.RoomID)
 	}
-	name := rooms.RandUserName()
+	var name string
 	if current.Authenticated {
 		name = current.AuthenticatedUser
+	} else {
+		name = rooms.RandUserName()
 	}
 
 	room.Users[current.ID] = &User{
