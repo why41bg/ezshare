@@ -88,10 +88,10 @@ func LoadConfig() (*Config, error) {
 	log.Debug().Msg("Begin to check TLS settings")
 	if config.ServerTLS {
 		if config.TLSCertFile == "" {
-			return nil, errors.New("SCREEGO_TLS_CERT_FILE must be set if TLS is enabled")
+			return nil, errors.New("EZSHARE_TLS_CERT_FILE must be set if TLS is enabled")
 		}
 		if config.TLSKeyFile == "" {
-			return nil, errors.New("SCREEGO_TLS_KEY_FILE must be set if TLS is enabled")
+			return nil, errors.New("EZSHARE_TLS_KEY_FILE must be set if TLS is enabled")
 		}
 	}
 	log.Debug().Msg("TLS settings checked")

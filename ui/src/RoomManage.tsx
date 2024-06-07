@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-    Box,
     Button,
     Checkbox,
     FormControl,
@@ -50,18 +49,6 @@ const CreateRoom = ({room, config}: Pick<UseRoom, 'room'> & {config: UIConfig}) 
                     }
                     label="Close Room after you leave"
                 />
-                <Box paddingBottom={0.5}>
-                    <Typography>
-                        Nat Traversal via:{' '}
-                        <Link
-                            href="https://screego.net/#/nat-traversal"
-                            target="_blank"
-                            rel="noreferrer"
-                        >
-                            {mode.toUpperCase()}
-                        </Link>
-                    </Typography>
-                </Box>
                 <Button onClick={submit} fullWidth variant="contained">
                     Create or Join a Room
                 </Button>
@@ -118,8 +105,8 @@ export const RoomManage = ({room, config}: {room: FCreateRoom; config: UseConfig
                 </Paper>
             </Grid>
             <div style={{position: 'absolute', margin: '0 auto', bottom: 0}}>
-                Screego {config.version} |{' '}
-                <Link href="https://github.com/screego/server/">GitHub</Link>
+                ezshare {config.version} |{' '}
+                <Link href="https://github.com/why41bg/ezshare">GitHub</Link>
             </div>
         </Grid>
     );

@@ -51,7 +51,7 @@ export enum VideoDisplayMode {
     OriginalSize = 'OriginalSize',
 }
 
-const SettingsKey = 'screegoSettings';
+const SettingsKey = 'ezshareSettings';
 
 export const loadSettings = (): Settings => {
     const settings: Partial<Settings> = JSON.parse(localStorage.getItem(SettingsKey) ?? '{}') ?? {};
