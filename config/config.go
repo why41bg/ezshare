@@ -20,9 +20,16 @@ var (
 	files  = []string{"ezshare.config.development", "ezshare.config"}
 )
 
+const (
+	AuthModeTurn = "turn"
+	AuthModeAll  = "all"
+	AuthModeNone = "none"
+)
+
 type Config struct {
 	ExternalIP []string `split_words:"true"`
 
+	ServerTLS             bool   `split_words:"true"`
 	ServerAddress         string `default:":5050" split_words:"true"`
 	Secret                []byte `split_words:"true"`
 	SessionTimeoutSeconds int    `default:"0" split_words:"true"`
@@ -34,6 +41,8 @@ type Config struct {
 	TurnIPProvider ip.Provider `ignored:"true"`
 
 	AuthMode                 string            `default:"turn" split_words:"true"`
+	TLSCertFile              string            `split_words:"true"`
+	TLSKeyFile               string            `split_words:"true"`
 	CorsAllowedOrigins       []string          `split_words:"true"`
 	CheckOrigin              func(string) bool `ignored:"true" json:"-"`
 	UsersFile                string            `split_words:"true"`
@@ -43,7 +52,7 @@ type Config struct {
 
 // LoadConfig firstly load config file to environment variables, then parse environment variables to generate Config.
 func LoadConfig() (*Config, error) {
-	log.Debug().Msg("Begin to load config file")
+	log.Debug().Msg("Begin to load config file...")
 	dir, err := workOrExecAbsDir()
 	if err != nil {
 		return nil, err
@@ -63,12 +72,29 @@ func LoadConfig() (*Config, error) {
 	}
 	log.Debug().Msg("Config file loaded")
 
-	log.Debug().Msg("Begin to process env config")
+	log.Debug().Msg("Begin to process env config...")
 	config := &Config{}
 	if err := envconfig.Process(prefix, config); err != nil {
 		return nil, err
 	}
 	log.Debug().Msg("Env config processed")
+
+	log.Debug().Msg("Begin to check auth mode")
+	if config.AuthMode != AuthModeTurn && config.AuthMode != AuthModeAll && config.AuthMode != AuthModeNone {
+		return nil, errors.New("invalid auth mode" + config.AuthMode)
+	}
+	log.Debug().Msg("Auth mode checked")
+
+	log.Debug().Msg("Begin to check TLS settings")
+	if config.ServerTLS {
+		if config.TLSCertFile == "" {
+			return nil, errors.New("SCREEGO_TLS_CERT_FILE must be set if TLS is enabled")
+		}
+		if config.TLSKeyFile == "" {
+			return nil, errors.New("SCREEGO_TLS_KEY_FILE must be set if TLS is enabled")
+		}
+	}
+	log.Debug().Msg("TLS settings checked")
 
 	if len(config.Secret) == 0 {
 		log.Debug().Msg("Secret is empty, begin to generate random secret")
@@ -79,7 +105,7 @@ func LoadConfig() (*Config, error) {
 		log.Debug().Msg("Random secret generated")
 	}
 
-	log.Debug().Msg("Begin to generate CORS check function")
+	log.Debug().Msg("Begin to generate CORS check function...")
 	var compiledAllowedOrigins []*regexp.Regexp
 	for _, origin := range config.CorsAllowedOrigins {
 		compiled, err := regexp.Compile(origin)
@@ -101,7 +127,7 @@ func LoadConfig() (*Config, error) {
 	}
 	log.Debug().Msg("CORS check function generated")
 
-	log.Debug().Msg("Begin to generate IP provider")
+	log.Debug().Msg("Begin to generate IP provider...")
 	turnIPProvider, err := parseIPProvider(config.ExternalIP)
 	if err != nil {
 		return nil, err
@@ -110,7 +136,7 @@ func LoadConfig() (*Config, error) {
 	config.TurnPort = strings.Split(config.TurnAddress, ":")[1]
 	log.Debug().Msg("IP provider generated")
 
-	log.Debug().Msg("Begin to parse port range")
+	log.Debug().Msg("Begin to parse port range...")
 	minport, maxport, err := config.parsePortRange()
 	if err != nil {
 		return nil, err
@@ -121,7 +147,7 @@ func LoadConfig() (*Config, error) {
 	}
 	log.Debug().Msg("Port range parsed")
 
-	log.Info().Msg("All config loaded")
+	log.Debug().Msg("All config loaded")
 	return config, nil
 }
 
@@ -159,7 +185,7 @@ func configFilePath(dir string) []string {
 }
 
 // parsePortRange parses the port range from the environment variable TurnPortRange, and returns the min port,
-// max port, and an error. If the environment variable is not set, it returns 0, 0, nil.
+// max port, and an error. Only when max port - min port >= 40, the port range is valid.
 func (c *Config) parsePortRange() (uint16, uint16, error) {
 	if c.TurnPortRange == "" {
 		return 0, 0, errors.New("port range not set")
@@ -185,8 +211,8 @@ func (c *Config) parsePortRange() (uint16, uint16, error) {
 	return uint16(min64), uint16(max64), nil
 }
 
-// PortRange returns the min port, max port, and a bool value indicating whether the port range is valid.
+// PortRange provides externally accessible ports for TURN.
 func (c *Config) PortRange() (uint16, uint16, bool) {
-	minport, maxport, _ := c.parsePortRange()
-	return minport, maxport, minport != 0 && maxport != 0
+	m, mm, _ := c.parsePortRange()
+	return m, mm, m != 0 && mm != 0
 }

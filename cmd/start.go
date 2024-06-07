@@ -11,38 +11,35 @@ import (
 	"github.com/urfave/cli"
 )
 
-func Start(ctx *cli.Context) error {
-	// 1. 读取配置文件
+func Start(ctx *cli.Context) {
 	c, err := config.LoadConfig()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to load config")
-		return err
+		return
 	}
 
-	// 2. 加载用户信息
 	users, err := auth.LoadUsersFile(c.UsersFile, c.Secret, c.SessionTimeoutSeconds)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to load users file")
-		return err
+		return
 	}
 
-	// 3. 启动内置TURN服务器
 	turnServer, err := turn.Start(c)
 	if err != nil {
 		log.Error().Err(err).Msg("Could not start turn server")
-		return err
+		return
 	}
 
-	// 4. 开启一个goroutine，持续监听并处理来自Rooms的消息
 	rooms := ws.NewRooms(turnServer, users, *c)
 	go rooms.Start()
 
-	// 5. 配置路由，启动HTTP服务器
 	r := router.Router(*c, rooms, users)
-	err = server.Start(r, c.ServerAddress, "", "")
+	err = server.Start(r, c.ServerAddress, c.TLSCertFile, c.TLSKeyFile)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to start http server")
-		return err
+		return
 	}
-	return nil
+
+	log.Info().Msg("ezshare started")
+	return
 }

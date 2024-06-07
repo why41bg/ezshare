@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// //go:embed build
+//go:embed build
 var buildFiles embed.FS
 var files, _ = fs.Sub(buildFiles, "build")
 

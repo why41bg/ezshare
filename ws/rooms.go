@@ -27,7 +27,7 @@ type Rooms struct {
 // NewRooms creates a new Rooms object and define the function to upgrade an HTTP request to a WebSocket
 // connection. Return the reference of the created Rooms object.
 func NewRooms(turnServer turn.Server, users *auth.Users, conf config.Config) *Rooms {
-	log.Info().Msg("Creating rooms")
+	log.Debug().Msg("Creating rooms")
 	return &Rooms{
 		Rooms:      map[string]*Room{},
 		Incoming:   make(chan ClientMessage),

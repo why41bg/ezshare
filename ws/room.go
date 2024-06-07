@@ -8,9 +8,18 @@ import (
 	"sort"
 )
 
+type ConnectionMode string
+
+const (
+	ConnectionLocal ConnectionMode = "local"
+	ConnectionSTUN  ConnectionMode = "stun"
+	ConnectionTURN  ConnectionMode = "turn"
+)
+
 type Room struct {
 	ID                string
 	CloseOnOwnerLeave bool
+	ConnectionMode    ConnectionMode
 	Users             map[xid.ID]*User
 	Sessions          map[xid.ID]*RoomSession
 }
@@ -42,18 +51,27 @@ func (r *Room) newSession(host, client xid.ID, rooms *Rooms, v4, v6 net.IP) {
 		Client: client,
 	}
 
-	hostName, hostPW := rooms.turnServer.Credentials(id.String()+"host", r.Users[host].Addr)
-	clientName, clientPW := rooms.turnServer.Credentials(id.String()+"client", r.Users[client].Addr)
-	iceHost := []outgoing.ICEServer{{
-		URLs:       rooms.addresses("turn", v4, v6, true),
-		Credential: hostPW,
-		Username:   hostName,
-	}}
-	iceClient := []outgoing.ICEServer{{
-		URLs:       rooms.addresses("turn", v4, v6, true),
-		Credential: clientPW,
-		Username:   clientName,
-	}}
+	iceHost := []outgoing.ICEServer{}
+	iceClient := []outgoing.ICEServer{}
+	switch r.ConnectionMode {
+	case ConnectionLocal:
+	case ConnectionSTUN:
+		iceHost = []outgoing.ICEServer{{URLs: rooms.addresses("stun", v4, v6, false)}}
+		iceClient = []outgoing.ICEServer{{URLs: rooms.addresses("stun", v4, v6, false)}}
+	case ConnectionTURN:
+		hostName, hostPW := rooms.turnServer.Credentials(id.String()+"host", r.Users[host].Addr)
+		clientName, clientPW := rooms.turnServer.Credentials(id.String()+"client", r.Users[client].Addr)
+		iceHost = []outgoing.ICEServer{{
+			URLs:       rooms.addresses("turn", v4, v6, true),
+			Credential: hostPW,
+			Username:   hostName,
+		}}
+		iceClient = []outgoing.ICEServer{{
+			URLs:       rooms.addresses("turn", v4, v6, true),
+			Credential: clientPW,
+			Username:   clientName,
+		}}
+	}
 	r.Users[host].Write <- outgoing.HostSession{Peer: client, ID: id, ICEServers: iceHost}
 	r.Users[client].Write <- outgoing.ClientSession{Peer: host, ID: id, ICEServers: iceClient}
 }
@@ -75,6 +93,10 @@ func (r *Rooms) addresses(prefix string, v4, v6 net.IP, tcp bool) (result []stri
 }
 
 func (r *Room) closeSession(rooms *Rooms, id xid.ID) {
+	if r.ConnectionMode == ConnectionTURN {
+		rooms.turnServer.Ban(id.String() + "host")
+		rooms.turnServer.Ban(id.String() + "client")
+	}
 	rooms.turnServer.Ban(id.String() + "host")
 	rooms.turnServer.Ban(id.String() + "client")
 	delete(r.Sessions, id)

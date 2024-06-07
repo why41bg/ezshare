@@ -1,7 +1,9 @@
 package ws
 
 import (
+	"errors"
 	"fmt"
+	"github.com/ezshare/server/config"
 
 	"github.com/rs/xid"
 )
@@ -15,6 +17,7 @@ func init() {
 type Create struct {
 	RoomId            string `json:"id"`
 	CloseOnOwnerLeave bool   `json:"closeOnOwnerLeave"`
+	ConnectionMode    ConnectionMode
 	UserName          string `json:"username"`
 	JoinIfExist       bool   `json:"joinIfExist,omitempty"`
 }
@@ -36,19 +39,33 @@ func (e *Create) Execute(rooms *Rooms, current ClientInfo) error {
 
 	// If the room does not exist, create a new room and set the request client
 	// as the owner of the room. If the client is authenticated, use its username
-	// as the room owner's name, otherwise generate a random name for the guest.
-	name := rooms.RandUserName()
+	// as the room owner's username, otherwise generate a random username for the guest.
+	username := rooms.RandUserName()
 	if current.Authenticated {
-		name = current.AuthenticatedUser
+		username = current.AuthenticatedUser
 	}
+
+	switch rooms.config.AuthMode {
+	case config.AuthModeNone:
+	case config.AuthModeAll:
+		if !current.Authenticated {
+			return errors.New("you need to login")
+		}
+	case config.AuthModeTurn:
+		if e.ConnectionMode != ConnectionSTUN && e.ConnectionMode != ConnectionLocal && !current.Authenticated {
+			return errors.New("you need to login")
+		}
+	}
+
 	room := &Room{
 		ID:                e.RoomId,
 		CloseOnOwnerLeave: e.CloseOnOwnerLeave,
+		ConnectionMode:    e.ConnectionMode,
 		Sessions:          map[xid.ID]*RoomSession{},
 		Users: map[xid.ID]*User{
 			current.ID: {
 				ID:        current.ID,
-				Name:      name,
+				Name:      username,
 				Streaming: false,
 				Owner:     true,
 				Addr:      current.Addr,
