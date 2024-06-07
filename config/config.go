@@ -50,7 +50,14 @@ type Config struct {
 	Version                  string            `default:"1.0"`
 }
 
-// LoadConfig firstly load config file to environment variables, then parse environment variables to generate Config.
+// LoadConfig according to the start mode to determine the directory of
+// the config file. If the start mode is Dev, the wording directory will
+// be chosen. If Prod, is executable directory.
+//
+// When getting the config file path, it tries to load the config file in
+// the order of the files slice. If the file is found, it will load the
+// file to the environment variables. Then it will process the environment
+// variables to generate Config.
 func LoadConfig() (*Config, error) {
 	log.Debug().Msg("Begin to load config file...")
 	dir, err := workOrExecAbsDir()
@@ -70,7 +77,6 @@ func LoadConfig() (*Config, error) {
 			continue
 		}
 	}
-	log.Debug().Msg("Config file loaded")
 
 	log.Debug().Msg("Begin to process env config...")
 	config := &Config{}
@@ -85,7 +91,7 @@ func LoadConfig() (*Config, error) {
 	}
 	log.Debug().Msg("Auth mode checked")
 
-	log.Debug().Msg("Begin to check TLS settings")
+	log.Debug().Msg("Begin to check TLS settings...")
 	if config.ServerTLS {
 		if config.TLSCertFile == "" {
 			return nil, errors.New("EZSHARE_TLS_CERT_FILE must be set if TLS is enabled")
@@ -151,8 +157,9 @@ func LoadConfig() (*Config, error) {
 	return config, nil
 }
 
-// workOrExecAbsDir returns the working directory or the directory of the executable file, depending on the
-// current running mode. if Dev, return working directory. if Prod, return the directory of the executable file.
+// workOrExecAbsDir returns the working directory or the directory of the
+// executable file, depending on the current running mode. if Dev, return
+// working directory. if Prod, return the directory of the executable file.
 func workOrExecAbsDir() (string, error) {
 	if CurrentMode() == Dev {
 		log.Debug().Msg("Use work dir")
@@ -162,8 +169,9 @@ func workOrExecAbsDir() (string, error) {
 	return execDir()
 }
 
-// execDir returns the directory of the executable file. If the program is running with go run, it returns the
-// temporary directory of go run. If the program is running with go build, it returns the directory of the
+// execDir returns the directory of the executable file. If the program is
+// running with go run, it returns the temporary directory of go run. If
+// the program is running with go build, it returns the directory of the
 // executable file.
 func execDir() (string, error) {
 	path, err := os.Executable()
@@ -174,8 +182,8 @@ func execDir() (string, error) {
 	return filepath.Dir(path), nil
 }
 
-// configFilePath generates the absolute path of the config file, the file name is fixed to the file name
-// in the files slice.
+// configFilePath generates the absolute path of the config file, the file
+// name is fixed to the file name in the files slice.
 func configFilePath(dir string) []string {
 	var configFilePaths []string
 	for _, file := range files {
@@ -184,8 +192,9 @@ func configFilePath(dir string) []string {
 	return configFilePaths
 }
 
-// parsePortRange parses the port range from the environment variable TurnPortRange, and returns the min port,
-// max port, and an error. Only when max port - min port >= 40, the port range is valid.
+// parsePortRange parses the port range from the environment variable TurnPortRange,
+// and returns the min port, max port, and an error. Only when max port - min port
+// >= 40, the port range is valid.
 func (c *Config) parsePortRange() (uint16, uint16, error) {
 	if c.TurnPortRange == "" {
 		return 0, 0, errors.New("port range not set")
@@ -198,16 +207,14 @@ func (c *Config) parsePortRange() (uint16, uint16, error) {
 	stringMin := parts[0]
 	stringMax := parts[1]
 
-	// 尝试将 stringMin 和 stringMax 转换为无符号16位整数
 	min64, err := strconv.ParseUint(stringMin, 10, 16)
 	if err != nil {
-		return 0, 0, fmt.Errorf("invalid min: %s", err)
+		return 0, 0, fmt.Errorf("invalid min port: %s", err)
 	}
 	max64, err := strconv.ParseUint(stringMax, 10, 16)
 	if err != nil {
-		return 0, 0, fmt.Errorf("invalid max: %s", err)
+		return 0, 0, fmt.Errorf("invalid max port: %s", err)
 	}
-
 	return uint16(min64), uint16(max64), nil
 }
 

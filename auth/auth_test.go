@@ -28,7 +28,7 @@ func TestReader(t *testing.T) {
 		log.Error().Err(err).Msg("read fd failed")
 	}
 	for idx, user := range users {
-		log.Info().Str("name", user.name).Str("passwd", user.passwd).Msg(fmt.Sprintf("user info #%d", idx))
+		log.Info().Str("name", user.name).Str("pass", user.pass).Msg(fmt.Sprintf("user info #%d", idx))
 	}
 }
 
@@ -38,7 +38,7 @@ func TestLoadUsersFile(t *testing.T) {
 }
 
 func TestUsers_CurrentUser(t *testing.T) {
-	// 创建一个 Users 实例
+	// 创建一个 AuthUsers 实例
 	users := &Users{
 		Lookup:      map[string]string{"testuser": "testpassword"},
 		store:       sessions.NewCookieStore([]byte("secret")),
@@ -56,7 +56,7 @@ func TestUsers_CurrentUser(t *testing.T) {
 	username := users.CurrentUser(req)
 	log.Info().Str("username", username).Msg("current user")
 	passwd := users.Lookup[username]
-	log.Info().Str("passwd", passwd).Msg("current user passwd")
+	log.Info().Str("pass", passwd).Msg("current user pass")
 }
 
 func loadUserFile(path string) (*Users, error) {
@@ -69,7 +69,7 @@ func loadUserFile(path string) (*Users, error) {
 }
 
 func TestUsers_validateUser(t *testing.T) {
-	// 创建一个 Users 实例
+	// 创建一个 AuthUsers 实例
 	users := &Users{
 		Lookup:      map[string]string{"testuser": "testpassword"},
 		store:       sessions.NewCookieStore([]byte("secret")),
@@ -85,7 +85,7 @@ func TestUsers_validateUser(t *testing.T) {
 }
 
 func TestUsers_Authenticate(t *testing.T) {
-	// 创建一个 Users 实例
+	// 创建一个 AuthUsers 实例
 	users := &Users{
 		Lookup:      map[string]string{"testuser": "testpassword"},
 		store:       sessions.NewCookieStore([]byte("secret")),

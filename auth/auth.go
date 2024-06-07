@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/gorilla/sessions"
 	"github.com/rs/zerolog/log"
-	"io"
 	"net/http"
 	"os"
 )
@@ -19,63 +18,44 @@ type Users struct {
 }
 
 type UserInfo struct {
-	name   string
-	passwd string
+	name string
+	pass string
 }
 
 type Response struct {
 	Message string `json:"message"`
 }
 
-func read(r io.Reader) ([]UserInfo, error) {
-	// 配置用户文件读取器
-	csvReader := csv.NewReader(r)
-	csvReader.Comma = ':'
-	csvReader.Comment = '#'
-	csvReader.TrimLeadingSpace = true
-
-	// 读取全部用户信息
-	UserInfos, err := csvReader.ReadAll()
-	if err != nil {
-		return nil, err
-	}
-	var ret []UserInfo
-	for _, info := range UserInfos {
-		if len(info) != 2 {
-			return nil, errors.New("malformed users file")
-		}
-		ret = append(ret, UserInfo{name: info[0], passwd: info[1]})
-	}
-
-	// 返回用户信息列表
-	return ret, nil
-}
-
-// LoadUsersFile reads the user information from the file specified by the path.
+// LoadUsersFile loads the user information from the file specified by the path.
 func LoadUsersFile(path string, secret []byte, sessionTimeout int) (*Users, error) {
-	// 1. 初始化一个存储用户信息的结构体
 	users := &Users{
 		Lookup:      map[string]string{},
 		store:       sessions.NewCookieStore(secret),
 		sessionTime: sessionTimeout,
 	}
 
-	// 2. 读取用户信息，保存到Users结构体中
 	fd, err := os.Open(path)
 	defer func(fd *os.File) {
 		err := fd.Close()
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to close users file")
+			log.Error().Err(err).Msg("Failed to close file descriptor")
 		}
 	}(fd)
-	userInfos, err := read(fd)
+	csvReader := csv.NewReader(fd)
+	csvReader.Comma = ':'
+	csvReader.Comment = '#'
+	csvReader.TrimLeadingSpace = true
+	UserInfos, err := csvReader.ReadAll()
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to read users file")
 		return nil, err
 	}
-	for _, userInfo := range userInfos {
-		users.Lookup[userInfo.name] = userInfo.passwd
+	for _, info := range UserInfos {
+		if len(info) != 2 {
+			return nil, errors.New("malformed users file")
+		}
+		users.Lookup[info[0]] = info[1]
 	}
+
 	log.Debug().Msg(fmt.Sprintf("Loaded %d users", len(users.Lookup)))
 	return users, nil
 }
