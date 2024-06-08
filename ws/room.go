@@ -54,8 +54,8 @@ func (r *Room) newSession(host, client xid.ID, rooms *Rooms, v4, v6 net.IP) {
 		Client: client,
 	}
 
-	iceHost := []outgoing.ICEServer{}
-	iceClient := []outgoing.ICEServer{}
+	var iceHost []outgoing.ICEServer
+	var iceClient []outgoing.ICEServer
 	switch r.ConnectionMode {
 	case ConnectionLocal:
 	case ConnectionSTUN:
@@ -96,13 +96,13 @@ func (r *Rooms) addresses(prefix string, v4, v6 net.IP, tcp bool) (result []stri
 	return
 }
 
+// closeSession closes the session between the host and the client. If the connection mode is TURN,
+// the TURN server is informed to ban the host and the client from the TURN server.
 func (r *Room) closeSession(rooms *Rooms, id xid.ID) {
 	if r.ConnectionMode == ConnectionTURN {
 		rooms.turnServer.Ban(id.String() + "host")
 		rooms.turnServer.Ban(id.String() + "client")
 	}
-	rooms.turnServer.Ban(id.String() + "host")
-	rooms.turnServer.Ban(id.String() + "client")
 	delete(r.Sessions, id)
 }
 

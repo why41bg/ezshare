@@ -51,7 +51,7 @@ export interface ICEServer {
 
 export interface RoomInfo {
     id: string;
-    share: ShareMode;
+    share: ShareMode; // TODO: remove
     mode: RoomMode;
     users: RoomUser[];
 }
