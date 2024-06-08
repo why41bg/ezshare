@@ -139,6 +139,11 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 	config.TurnIPProvider = turnIPProvider
+
+	// test
+	testV4, testV6, _ := turnIPProvider.Get()
+	log.Info().IPAddr("v4", testV4).IPAddr("v6", testV6).Msg("test ip provider")
+
 	config.TurnPort = strings.Split(config.TurnAddress, ":")[1]
 	log.Debug().Msg("IP provider generated")
 

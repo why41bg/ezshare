@@ -62,12 +62,14 @@ export const authModeToRoomMode = (authMode: UIConfig['authMode'], loggedIn: boo
     if (loggedIn) {
         return RoomMode.Turn;
     }
+    // Not logged in
     switch (authMode) {
         case 'all':
-            return RoomMode.Turn;
+            return RoomMode.Local;
         case 'turn':
             return RoomMode.Stun;
         case 'none':
+            return RoomMode.Turn;
         default:
             return RoomMode.Turn;
     }

@@ -15,11 +15,11 @@ func init() {
 }
 
 type Create struct {
-	RoomId            string `json:"id"`
-	CloseOnOwnerLeave bool   `json:"closeOnOwnerLeave"`
-	ConnectionMode    ConnectionMode
-	UserName          string `json:"username"`
-	JoinIfExist       bool   `json:"joinIfExist,omitempty"`
+	RoomId            string         `json:"id"`
+	CloseOnOwnerLeave bool           `json:"closeOnOwnerLeave"`
+	ConnectionMode    ConnectionMode `json:"mode"`
+	UserName          string         `json:"username"`
+	JoinIfExist       bool           `json:"joinIfExist,omitempty"`
 }
 
 func (e *Create) Execute(rooms *Rooms, current ClientInfo) error {

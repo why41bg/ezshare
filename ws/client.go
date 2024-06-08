@@ -92,7 +92,16 @@ func (c *Client) startReading(pongWait time.Duration) {
 		return nil
 	})
 	for {
-		t, m, _ := c.conn.NextReader()
+		t, m, err := c.conn.NextReader()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Error().Err(err).Str("clientId", c.info.ID.String()).Str("user", c.info.AuthenticatedUser).Msg("Unexpected close error")
+			} else {
+				log.Debug().Str("clientId", c.info.ID.String()).Str("user", c.info.AuthenticatedUser).Msg("Close reader")
+			}
+			return
+		}
+
 		if t == websocket.BinaryMessage {
 			_ = c.conn.CloseHandler()(websocket.CloseUnsupportedData, fmt.Sprintf("Unsupported binary message type"))
 			return

@@ -124,7 +124,6 @@ const clientSession = async ({
     onTrack: (s: MediaStream) => void;
     done: () => void;
 }): Promise<RTCPeerConnection> => {
-    console.log('ice', ice);
     const peer = new RTCPeerConnection({...relayConfig, iceServers: ice});
     peer.onicecandidate = (event) => {
         if (!event.candidate) {
@@ -132,8 +131,7 @@ const clientSession = async ({
         }
         send({type: 'clientice', payload: {sid: sid, value: event.candidate}});
     };
-    peer.onconnectionstatechange = (event) => {
-        console.log('client change', event);
+    peer.onconnectionstatechange = () => {
         if (
             peer.connectionState === 'closed' ||
             peer.connectionState === 'disconnected' ||

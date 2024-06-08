@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/ezshare/server/ws/outgoing"
 	"github.com/rs/xid"
+	"github.com/rs/zerolog/log"
 	"net"
 	"sort"
 )
@@ -77,6 +78,11 @@ func (r *Room) newSession(host, client xid.ID, rooms *Rooms, v4, v6 net.IP) {
 	}
 	r.Users[host].Write <- outgoing.HostSession{Peer: client, ID: id, ICEServers: iceHost}
 	r.Users[client].Write <- outgoing.ClientSession{Peer: host, ID: id, ICEServers: iceClient}
+
+	log.Debug().Str("roomId", r.ID).Str("mode", string(r.ConnectionMode)).
+		Str("host", host.String()).Interface("iceHost", iceHost).
+		Str("client", client.String()).Interface("iceClient", iceClient).
+		Msg("New session")
 }
 
 // addresses generates the STUN or TURN server address for the given IP.

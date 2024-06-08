@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"reflect"
 	"time"
 )
 
@@ -85,14 +86,14 @@ func (r *Rooms) Start() {
 		log.Debug().
 			Str("clientId", msg.Info.ID.String()).
 			Str("user", msg.Info.AuthenticatedUser).
-			Interface("event", msg.Incoming).
+			Str("event", reflect.TypeOf(msg.Incoming).Elem().Name()).
+			Interface("eventInfo", msg.Incoming).
 			Msg("Server received a message from client")
 
 		if err := msg.Incoming.Execute(r, msg.Info); err != nil {
-			log.Error().Err(err).Msg("Incoming message execute failed")
+			log.Error().Err(err).Msg("Failed to execute Incoming message")
 			msg.Info.Close <- err.Error()
 		}
-		log.Debug().Interface("event", msg.Incoming).Msg("Message executed successfully")
 	}
 }
 
