@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/gorilla/sessions"
 	"github.com/rs/zerolog/log"
+	"gopkg.in/boj/redistore.v1"
 	"net/http"
 	"os"
 )
@@ -28,9 +29,14 @@ type Response struct {
 
 // LoadUsersFile loads the user information from the file specified by the path.
 func LoadUsersFile(path string, secret []byte, sessionTimeout int) (*Users, error) {
+	store, err := redistore.NewRediStore(10, "tcp", ":6379", "123456", secret)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to connect to redis.")
+		return nil, err
+	}
 	users := &Users{
 		Lookup:      map[string]string{},
-		store:       sessions.NewCookieStore(secret),
+		store:       store,
 		sessionTime: sessionTimeout,
 	}
 
@@ -47,6 +53,7 @@ func LoadUsersFile(path string, secret []byte, sessionTimeout int) (*Users, erro
 	csvReader.TrimLeadingSpace = true
 	UserInfos, err := csvReader.ReadAll()
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to read users file")
 		return nil, err
 	}
 	for _, info := range UserInfos {

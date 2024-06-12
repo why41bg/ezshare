@@ -6,16 +6,16 @@ import fs from 'fs';
 export default defineConfig({
     base: './',
     server: {
-        host: '192.168.0.104',
+        host: '127.0.0.1',
         port: 3000,
         open: false,
         https: {
-            key: fs.readFileSync('D:\\Project\\Project\\ezshare\\private.key'),
-            cert: fs.readFileSync('D:\\Project\\Project\\ezshare\\crt.pem'),
+            key: fs.readFileSync(''),
+            cert: fs.readFileSync(''),
         },
         proxy: {
             '^/(config|logout|login|stream)$': {
-                target: 'https://192.168.0.104:5050',
+                target: 'https://127.0.0.1:5050',
                 ws: true,
                 secure: false
             },
