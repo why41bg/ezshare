@@ -18,7 +18,7 @@ func Start(ctx *cli.Context) {
 		return
 	}
 
-	users, err := auth.LoadUsersFile(c.UsersFile, c.Secret, c.SessionTimeoutSeconds)
+	users, err := auth.LoadUsersFile(c.UsersFile, c.RedisAddress, c.RedisPass, c.Secret, c.SessionTimeoutSeconds)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to load users file")
 		return

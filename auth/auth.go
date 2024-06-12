@@ -28,8 +28,8 @@ type Response struct {
 }
 
 // LoadUsersFile loads the user information from the file specified by the path.
-func LoadUsersFile(path string, secret []byte, sessionTimeout int) (*Users, error) {
-	store, err := redistore.NewRediStore(10, "tcp", ":6379", "123456", secret)
+func LoadUsersFile(path, redisAddress, redisPass string, secret []byte, sessionTimeout int) (*Users, error) {
+	store, err := redistore.NewRediStore(10, "tcp", redisAddress, redisPass, secret)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to connect to redis.")
 		return nil, err

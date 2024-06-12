@@ -48,6 +48,8 @@ type Config struct {
 	UsersFile                string            `split_words:"true"`
 	CloseRoomWhenOwnerLeaves bool              `default:"true" split_words:"true"`
 	Version                  string            `default:"1.0"`
+	RedisAddress             string            `default:":6379" required:"true" split_words:"true"`
+	RedisPass                string            `split_words:"true" required:"true"`
 }
 
 // LoadConfig according to the start mode to determine the directory of
